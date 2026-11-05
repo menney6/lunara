@@ -1,0 +1,17 @@
+# Lunara on Render — https://render.com/docs/blueprint-spec
+#
+# Free-plan safe: no disk block, so it deploys on the free tier where the
+# container filesystem persists between requests and is reset on redeploy.
+# For fully persistent records, attach a Disk in the Render dashboard mounted
+# at /var/data — LUNARA_DATA_DIR already points there, so nothing else changes.
+services:
+  - type: web
+    name: lunara
+    runtime: docker
+    plan: free
+    healthCheckPath: /welcome
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: LUNARA_DATA_DIR
+        value: /var/data

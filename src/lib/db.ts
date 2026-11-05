@@ -3,8 +3,15 @@ import fs from "node:fs";
 import path from "node:path";
 import { ARTICLES } from "./content.ts";
 
-const DATA_DIR = path.join(process.cwd(), "data");
-const DB_PATH = path.join(DATA_DIR, "lunara.db");
+/* Where the SQLite file lives. Defaults to ./data next to the app, but hosts
+   with a mounted persistent disk (Render, Railway, a VPS) set LUNARA_DATA_DIR
+   to the mount point so records survive redeploys. */
+const DATA_DIR = process.env.LUNARA_DATA_DIR
+  ? path.resolve(process.env.LUNARA_DATA_DIR)
+  : path.join(process.cwd(), "data");
+const DB_PATH = process.env.LUNARA_DB_FILE
+  ? path.resolve(process.env.LUNARA_DB_FILE)
+  : path.join(DATA_DIR, "lunara.db");
 
 /* -------------------------------------------------------------------------
    Lunara schema
@@ -140,7 +147,7 @@ let _db: DatabaseSync | null = null;
 
 export function getDb(): DatabaseSync {
   if (_db) return _db;
-  fs.mkdirSync(DATA_DIR, { recursive: true });
+  fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
   _db = new DatabaseSync(DB_PATH);
   _db.exec(SCHEMA);
   seedArticles(_db);

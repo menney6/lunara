@@ -1,0 +1,26 @@
+# build artifacts
+node_modules
+.next
+out
+build
+
+# local health records — never bake private data into an image
+data
+*.db
+*.db-wal
+*.db-shm
+
+# vcs / tooling
+.git
+.gitignore
+AGENTS.md
+
+# env
+.env
+.env.*
+
+# misc
+Dockerfile
+.dockerignore
+render.yaml
+*.log
