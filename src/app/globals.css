@@ -1,0 +1,196 @@
+@import "tailwindcss";
+
+/* ------------------------------------------------------------------ theme */
+@theme {
+  /* Brand palette */
+  --color-lavender: #a98bd4;
+  --color-lavender-soft: #cdbbe9;
+  --color-lavender-mist: #efe8f9;
+  --color-lavender-deep: #8665c2;
+
+  --color-pink: #e8a8b8;
+  --color-pink-soft: #f4ced8;
+  --color-pink-mist: #fdeef2;
+  --color-pink-deep: #d18498;
+
+  --color-cream: #fff9f6;
+  --color-cream-deep: #fdf1eb;
+  --color-cream-dark: #f7e9e2;
+
+  --color-plum: #68466f;
+  --color-plum-deep: #4b3152;
+  --color-plum-soft: #8f6f96;
+
+  --color-ink: #302b35;
+  --color-ink-soft: #6a6371;
+  --color-ink-faint: #9d96a4;
+
+  --color-card: #ffffff;
+  --color-line: #f1e6e1;
+  --color-line-strong: #e6d5ce;
+
+  /* Cycle phases */
+  --color-phase-menstrual: #e8a8b8;
+  --color-phase-follicular: #a98bd4;
+  --color-phase-ovulation: #f2c078;
+  --color-phase-luteal: #8b7bb8;
+
+  /* Semantic */
+  --color-success: #74b795;
+  --color-success-soft: #e4f3eb;
+  --color-warning: #e6a65c;
+  --color-warning-soft: #fdf1e2;
+  --color-danger: #d9748a;
+  --color-danger-soft: #fdeaef;
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: var(--font-fraunces), var(--font-inter), ui-serif, Georgia, serif;
+
+  --shadow-soft: 0 1px 2px rgba(104, 70, 111, 0.04), 0 6px 20px -8px rgba(104, 70, 111, 0.14);
+  --shadow-card: 0 1px 3px rgba(104, 70, 111, 0.05), 0 12px 32px -14px rgba(104, 70, 111, 0.2);
+  --shadow-float: 0 4px 12px rgba(104, 70, 111, 0.08), 0 24px 56px -20px rgba(104, 70, 111, 0.3);
+  --shadow-ring: 0 0 0 1px rgba(169, 139, 212, 0.16), 0 18px 46px -20px rgba(104, 70, 111, 0.42);
+
+  --animate-fade-up: fade-up 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-fade-in: fade-in 0.4s ease both;
+  --animate-scale-in: scale-in 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-slide-up: slide-up 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-slide-right: slide-right 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-shimmer: shimmer 1.7s linear infinite;
+  --animate-pulse-soft: pulse-soft 2.6s ease-in-out infinite;
+  --animate-spin-slow: spin 26s linear infinite;
+  --animate-bob: bob 4s ease-in-out infinite;
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.94); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(100%); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes slide-right {
+  from { opacity: 0; transform: translateX(-16px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes shimmer {
+  from { background-position: -160% 0; }
+  to { background-position: 260% 0; }
+}
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.05); }
+}
+@keyframes bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-7px); }
+}
+@keyframes ring-draw {
+  from { stroke-dashoffset: var(--ring-length, 1000); }
+  to { stroke-dashoffset: var(--ring-offset, 0); }
+}
+
+/* --------------------------------------------------------------- base layer */
+:root {
+  color-scheme: light;
+}
+
+html {
+  background-color: var(--color-cream);
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background-color: var(--color-cream);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overscroll-behavior-y: none;
+}
+
+::selection {
+  background: var(--color-lavender-soft);
+  color: var(--color-plum-deep);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-lavender-soft) transparent;
+}
+*::-webkit-scrollbar { width: 9px; height: 9px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background: var(--color-lavender-soft);
+  border-radius: 999px;
+  border: 2px solid var(--color-cream);
+}
+*::-webkit-scrollbar-thumb:hover { background: var(--color-lavender); }
+
+:focus-visible {
+  outline: 2px solid var(--color-lavender);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+/* -------------------------------------------------------------- utilities */
+@utility no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  &::-webkit-scrollbar { display: none; }
+}
+
+@utility surface {
+  background-color: var(--color-card);
+  border: 1px solid var(--color-line);
+  border-radius: 1.5rem;
+  box-shadow: var(--shadow-soft);
+}
+
+@utility gradient-brand {
+  background-image: linear-gradient(135deg, #b79ae0 0%, #a98bd4 42%, #e8a8b8 100%);
+}
+
+@utility gradient-plum {
+  background-image: linear-gradient(140deg, #68466f 0%, #8665c2 58%, #e8a8b8 130%);
+}
+
+@utility gradient-warm {
+  background-image: linear-gradient(135deg, #fff9f6 0%, #fdeef2 50%, #efe8f9 100%);
+}
+
+@utility skeleton {
+  background-image: linear-gradient(100deg, #f7eeea 30%, #fdf6f3 48%, #f7eeea 66%);
+  background-size: 220% 100%;
+  animation: var(--animate-shimmer);
+}
+
+@utility text-gradient-brand {
+  background-image: linear-gradient(120deg, #8665c2, #d18498);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Hairline separators that read well on cream */
+@utility hairline {
+  border-color: var(--color-line);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
