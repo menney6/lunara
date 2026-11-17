@@ -8,6 +8,6 @@ export default async function Index() {
   const user = await getSessionUser();
   if (!user) redirect("/welcome");
 
-  const settings = getSettings(user.id);
+  const settings = await getSettings(user.id);
   redirect(settings.onboarding_complete && settings.last_period ? "/home" : "/onboarding");
 }

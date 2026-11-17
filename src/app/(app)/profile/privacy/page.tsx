@@ -7,8 +7,8 @@ import { PrivacyClient } from "./privacy-client";
 
 export const dynamic = "force-dynamic";
 
-function countFor(userId: number, table: "periods" | "daily_logs"): number {
-  const row = one<{ n: number }>(
+async function countFor(userId: number, table: "periods" | "daily_logs"): Promise<number> {
+  const row = await one<{ n: number }>(
     `SELECT COUNT(*) AS n FROM ${table} WHERE user_id = ?`,
     userId,
   );
@@ -19,7 +19,7 @@ export default async function PrivacyPage() {
   const user = await getSessionUser();
   if (!user) redirect("/login");
 
-  const settings = getSettings(user.id);
+  const settings = await getSettings(user.id);
 
   return (
     <div className="space-y-5">
@@ -32,8 +32,8 @@ export default async function PrivacyPage() {
         privacyLock={settings.privacy_lock === 1}
         shareAnalytics={settings.share_analytics === 1}
         counts={{
-          periods: countFor(user.id, "periods"),
-          logs: countFor(user.id, "daily_logs"),
+          periods: await countFor(user.id, "periods"),
+          logs: await countFor(user.id, "daily_logs"),
         }}
       />
     </div>

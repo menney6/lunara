@@ -93,13 +93,13 @@ export default async function HomePage() {
   const user = await getSessionUser();
   if (!user) redirect("/login");
 
-  const settings = getSettings(user.id);
-  const state = getCycleStateFor(user.id);
-  const periods = listPeriods(user.id);
+  const settings = await getSettings(user.id);
+  const state = await getCycleStateFor(user.id);
+  const periods = await listPeriods(user.id);
   const todayISO = toISO(new Date());
-  const log = getLog(user.id, todayISO);
+  const log = await getLog(user.id, todayISO);
   const parsed = log ? parseLog(log) : null;
-  const recent = recentLogs(user.id, 5);
+  const recent = await recentLogs(user.id, 5);
 
   const name = settings.display_name || user.name || "there";
   const phase = state ? PHASE_META[state.phase] : null;

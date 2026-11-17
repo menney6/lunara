@@ -16,13 +16,13 @@ export async function GET() {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "Not signed in." }, { status: 401 });
 
-  const settings = getSettings(user.id);
-  const periods = listPeriods(user.id);
-  const logs = query<DailyLog>(
+  const settings = await getSettings(user.id);
+  const periods = await listPeriods(user.id);
+  const logs = await query<DailyLog>(
     "SELECT * FROM daily_logs WHERE user_id = ? ORDER BY date",
     user.id,
   );
-  const notifications = getNotificationPrefs(user.id);
+  const notifications = await getNotificationPrefs(user.id);
 
   return NextResponse.json({ settings, periods, logs, notifications });
 }
@@ -47,7 +47,7 @@ async function deleteAccount(user: SessionUser, body: Record<string, unknown> | 
     );
   }
 
-  const row = one<{ password_hash: string }>(
+  const row = await one<{ password_hash: string }>(
     "SELECT password_hash FROM users WHERE id = ?",
     user.id,
   );
@@ -79,7 +79,7 @@ async function deleteAccount(user: SessionUser, body: Record<string, unknown> | 
 
   // Cascades to settings, periods, daily_logs, notification_prefs, pregnancy
   // and sessions — every table references users(id) ON DELETE CASCADE.
-  run("DELETE FROM users WHERE id = ?", user.id);
+  await run("DELETE FROM users WHERE id = ?", user.id);
   await destroySession();
 
   return NextResponse.json({ ok: true });

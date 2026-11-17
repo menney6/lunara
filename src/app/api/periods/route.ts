@@ -67,14 +67,14 @@ export async function POST(req: Request) {
 
   // Ownership first: an id belonging to another account is a 404, never a write.
   if (id !== null) {
-    const existing = getPeriod(user.id, id);
+    const existing = await getPeriod(user.id, id);
     if (!existing) return NextResponse.json({ error: "Period not found." }, { status: 404 });
     // savePeriod upserts on start_date, so a moved first day must drop the old row.
-    if (existing.start_date !== start) deletePeriod(user.id, id);
+    if (existing.start_date !== start) await deletePeriod(user.id, id);
   }
 
-  const period = savePeriod(user.id, { start_date: start, end_date: end, flow });
-  syncAnchorFromHistory(user.id);
+  const period = await savePeriod(user.id, { start_date: start, end_date: end, flow });
+  await syncAnchorFromHistory(user.id);
 
   return NextResponse.json({ ok: true, period });
 }
@@ -96,11 +96,11 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ error: "Provide a period id." }, { status: 400 });
   }
 
-  const period = getPeriod(user.id, id);
+  const period = await getPeriod(user.id, id);
   if (!period) return NextResponse.json({ error: "Period not found." }, { status: 404 });
 
-  deletePeriod(user.id, id);
-  syncAnchorFromHistory(user.id);
+  await deletePeriod(user.id, id);
+  await syncAnchorFromHistory(user.id);
 
   return NextResponse.json({ ok: true });
 }

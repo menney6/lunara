@@ -83,7 +83,7 @@ export default async function CheckInPage({ searchParams }: CheckInPageProps) {
   const date = isIsoDate(requested) ? clampDate(requested, minDate, todayISO) : todayISO;
 
   const logs: Record<string, ParsedDailyLog> = {};
-  for (const row of listLogs(user.id, minDate, todayISO)) {
+  for (const row of await listLogs(user.id, minDate, todayISO)) {
     logs[row.date] = parseLog(row);
   }
 
@@ -106,7 +106,7 @@ export default async function CheckInPage({ searchParams }: CheckInPageProps) {
         todayISO={todayISO}
         minDate={minDate}
         logs={logs}
-        profile={getCycleProfile(user.id)}
+        profile={await getCycleProfile(user.id)}
         prefill={prefill}
       />
     </div>

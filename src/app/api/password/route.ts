@@ -35,7 +35,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const row = one<{ password_hash: string }>(
+  const row = await one<{ password_hash: string }>(
     "SELECT password_hash FROM users WHERE id = ?",
     user.id,
   );
@@ -59,10 +59,10 @@ export async function POST(req: Request) {
     );
   }
 
-  run("UPDATE users SET password_hash = ? WHERE id = ?", hashPassword(newPassword), user.id);
+  await run("UPDATE users SET password_hash = ? WHERE id = ?", hashPassword(newPassword), user.id);
 
   // Invalidate every session for this account — including the one in use here.
-  run("DELETE FROM sessions WHERE user_id = ?", user.id);
+  await run("DELETE FROM sessions WHERE user_id = ?", user.id);
   // Hand this device a brand-new session so only the other devices are signed out.
   await createSession(user.id);
 

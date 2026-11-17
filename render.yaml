@@ -1,9 +1,7 @@
 # Lunara on Render — https://render.com/docs/blueprint-spec
 #
-# Free-plan safe: no disk block, so it deploys on the free tier where the
-# container filesystem persists between requests and is reset on redeploy.
-# For fully persistent records, attach a Disk in the Render dashboard mounted
-# at /var/data — LUNARA_DATA_DIR already points there, so nothing else changes.
+# The app talks to Supabase Postgres, so no disk is needed: user data lives
+# in the database and survives redeploys on the free tier.
 services:
   - type: web
     name: lunara
@@ -13,5 +11,22 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      - key: LUNARA_DATA_DIR
-        value: /var/data
+      # Supabase Session pooler connection string — set the value in the
+      # Render dashboard (Secrets → SUPABASE_DB_URL), never commit it.
+      - key: SUPABASE_DB_URL
+        sync: false
+      # Outbound email (login notifications, password resets, signup
+      # confirmations). Until these secrets are set in the Render dashboard the
+      # app runs in demo mode: link flows return the link instead of mailing it.
+      # Gmail needs an App Password (2-Step Verification enabled):
+      #   https://myaccount.google.com/apppasswords
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: MAIL_FROM
+        sync: false

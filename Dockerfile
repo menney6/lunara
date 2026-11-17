@@ -15,9 +15,6 @@ RUN npm run build
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
-# Mounted persistent disks attach here (Render, Railway, a VPS). Local runs
-# fall back to ./data when this is unset.
-ENV LUNARA_DATA_DIR=/var/data
 
 EXPOSE 3000
 

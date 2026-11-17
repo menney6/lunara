@@ -106,7 +106,7 @@ export async function POST(req: Request) {
     note: readText(body.note, MAX_NOTE_LENGTH) ?? "",
   };
 
-  const log = saveDailyLog(user.id, input);
+  const log = await saveDailyLog(user.id, input);
   return NextResponse.json({ ok: true, log });
 }
 
@@ -119,7 +119,7 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ error: "Choose a valid date." }, { status: 400 });
   }
 
-  const removed = deleteDailyLog(user.id, date);
+  const removed = await deleteDailyLog(user.id, date);
   if (!removed) {
     return NextResponse.json(
       { error: "No check-in found for that date." },

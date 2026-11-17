@@ -83,9 +83,9 @@ export default async function InsightsPage() {
   const user = await getSessionUser();
   if (!user) redirect("/login");
 
-  const settings = getSettings(user.id);
-  const periods = listPeriods(user.id);
-  const logs = recentLogs(user.id, 400);
+  const settings = await getSettings(user.id);
+  const periods = await listPeriods(user.id);
+  const logs = await recentLogs(user.id, 400);
   const today = new Date();
   const todayISO = toISO(today);
 

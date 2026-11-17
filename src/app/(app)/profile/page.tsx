@@ -51,7 +51,7 @@ export default async function ProfilePage() {
   const user = await getSessionUser();
   if (!user) redirect("/login");
 
-  const settings = getSettings(user.id);
+  const settings = await getSettings(user.id);
   const name = settings.display_name.trim() || user.name;
   const memberSince = formatDate(user.created_at.slice(0, 10), { month: "long", year: "numeric" });
 

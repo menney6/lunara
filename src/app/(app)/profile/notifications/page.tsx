@@ -10,8 +10,8 @@ export default async function NotificationsPage() {
   const user = await getSessionUser();
   if (!user) redirect("/login");
 
-  const settings = getSettings(user.id);
-  const prefs = getNotificationPrefs(user.id);
+  const settings = await getSettings(user.id);
+  const prefs = await getNotificationPrefs(user.id);
   const byKind = new Map(prefs.map((pref) => [pref.kind, pref]));
 
   const items: NotificationItem[] = ALL_NOTIFICATIONS.map(({ kind, label, blurb }) => {

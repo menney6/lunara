@@ -11,8 +11,8 @@ export default async function CalendarPage() {
   const user = await getSessionUser();
   if (!user) redirect("/login");
 
-  const periods = listPeriods(user.id);
-  const profile = getCycleProfile(user.id);
+  const periods = await listPeriods(user.id);
+  const profile = await getCycleProfile(user.id);
 
   // Load a generous window of check-ins so any day the user taps can be
   // summarised without a second round-trip. Nothing can be logged in the future.
@@ -21,7 +21,7 @@ export default async function CalendarPage() {
     (acc, p) => (p.start_date < acc ? p.start_date : acc),
     toISO(addDays(today, -365)),
   );
-  const logs = listLogs(user.id, earliest, toISO(today));
+  const logs = await listLogs(user.id, earliest, toISO(today));
 
   return <CalendarClient profile={profile} periods={periods} logs={logs} />;
 }

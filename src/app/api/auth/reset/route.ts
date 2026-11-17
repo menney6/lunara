@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { hashPassword } from "@/lib/auth";
-import { one, run } from "@/lib/db";
+import { one, run, SQL_NOW } from "@/lib/db";
 import { passwordProblem } from "@/lib/validate";
 
 export const dynamic = "force-dynamic";
@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
   }
 
   const hash = crypto.createHash("sha256").update(token).digest("hex");
-  const record = one<{ user_id: number; expires_at: string; used_at: string | null }>(
+  const record = await one<{ user_id: number; expires_at: string; used_at: string | null }>(
     "SELECT user_id, expires_at, used_at FROM password_resets WHERE token_hash = ?",
     hash,
   );
@@ -35,10 +35,10 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  run("UPDATE users SET password_hash = ? WHERE id = ?", hashPassword(password), record.user_id);
-  run("UPDATE password_resets SET used_at = datetime('now') WHERE token_hash = ?", hash);
+  await run("UPDATE users SET password_hash = ? WHERE id = ?", hashPassword(password), record.user_id);
+  await run(`UPDATE password_resets SET used_at = ${SQL_NOW} WHERE token_hash = ?`, hash);
   // A changed password ends every existing session for that account.
-  run("DELETE FROM sessions WHERE user_id = ?", record.user_id);
+  await run("DELETE FROM sessions WHERE user_id = ?", record.user_id);
 
   return NextResponse.json({ ok: true, next: "/login?reset=1" });
 }

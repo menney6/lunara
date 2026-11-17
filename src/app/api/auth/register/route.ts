@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createSession, ensureSettings, hashPassword } from "@/lib/auth";
 import { one, run } from "@/lib/db";
+import { confirmationRequired, sendConfirmationEmail } from "@/lib/mail";
 import { hasErrors, validateRegister } from "@/lib/validate";
 import { updateSettings } from "@/lib/queries";
 
@@ -9,6 +10,8 @@ export const dynamic = "force-dynamic";
 interface UserRow {
   id: number;
   email: string;
+  name: string;
+  email_confirmed_at: string | null;
 }
 
 export async function POST(req: Request) {
@@ -32,19 +35,54 @@ export async function POST(req: Request) {
     );
   }
 
-  const existing = one<UserRow>("SELECT id, email FROM users WHERE email = ?", email);
+  const existing = await one<UserRow>(
+    "SELECT id, email, name, email_confirmed_at FROM users WHERE email = ?",
+    email,
+  );
   if (existing) {
+    // An unconfirmed account can't sign in — issue a fresh confirmation link
+    // rather than leaving the user at a dead end.
+    if (existing.email_confirmed_at === null) {
+      const devLink = await sendConfirmationEmail(req, existing.id, email, existing.name);
+      return NextResponse.json(
+        {
+          error:
+            "An account with that email already exists. Check your inbox for the confirmation link.",
+          devLink,
+        },
+        { status: 409 },
+      );
+    }
     return NextResponse.json(
       { error: "An account with that email already exists." },
       { status: 409 },
     );
   }
 
-  const res = run("INSERT INTO users (email, password_hash, name) VALUES (?,?,?)", email, hashPassword(password), name);
+  const confirmFirst = confirmationRequired();
+  const res = confirmFirst
+    ? await run(
+        "INSERT INTO users (email, password_hash, name, email_confirmed_at) VALUES (?,?,?,NULL) RETURNING id",
+        email,
+        hashPassword(password),
+        name,
+      )
+    : await run(
+        "INSERT INTO users (email, password_hash, name) VALUES (?,?,?) RETURNING id",
+        email,
+        hashPassword(password),
+        name,
+      );
 
   const userId = Number(res.lastInsertRowid);
-  ensureSettings(userId);
-  updateSettings(userId, { display_name: name });
+  await ensureSettings(userId);
+  await updateSettings(userId, { display_name: name });
+
+  // Signup confirmation: no session until the emailed link is opened.
+  if (confirmFirst) {
+    const devLink = await sendConfirmationEmail(req, userId, email, name);
+    return NextResponse.json({ ok: true, needsConfirmation: true, devLink });
+  }
 
   await createSession(userId);
 

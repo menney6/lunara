@@ -12,8 +12,8 @@ export default async function LearnPage() {
   const user = await getSessionUser();
   if (!user) redirect("/login");
 
-  const articles = listArticles();
-  const total = countArticles();
+  const articles = await listArticles();
+  const total = await countArticles();
 
   return (
     <div className="space-y-6">

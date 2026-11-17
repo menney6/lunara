@@ -15,6 +15,8 @@ export function RegisterForm() {
   const [errors, setErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [devLink, setDevLink] = useState<string | null>(null);
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
@@ -30,10 +32,23 @@ export function RegisterForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, email, password, confirm }),
       });
-      const data = (await res.json()) as { error?: string; next?: string };
+      const data = (await res.json()) as {
+        error?: string;
+        next?: string;
+        needsConfirmation?: boolean;
+        devLink?: string | null;
+      };
+
+      if (data.devLink) setDevLink(data.devLink);
 
       if (!res.ok) {
+        // A retry on an unconfirmed account returns a fresh confirmation link.
+        if (data.devLink) setSent(true);
         setFormError(data.error ?? "Unable to create your account.");
+        return;
+      }
+      if (data.needsConfirmation) {
+        setSent(true);
         return;
       }
       router.push(data.next ?? "/onboarding");
@@ -47,6 +62,43 @@ export function RegisterForm() {
 
   // Live hint that tightens as the user types.
   const pwHint = password ? (passwordProblem(password) ?? "Looks good.") : undefined;
+
+  if (sent) {
+    return (
+      <div className="space-y-5">
+        <div className="rounded-2xl border border-success/30 bg-success-soft px-4 py-4">
+          <p className="text-[14px] font-medium text-[#3f7d5f]">Check your email.</p>
+          <p className="mt-1.5 text-[13px] leading-relaxed text-[#3f7d5f]/85">
+            We sent a confirmation link to <span className="font-medium">{email}</span>. Open it to
+            activate your account — you can sign in once it&apos;s confirmed.
+          </p>
+        </div>
+
+        {devLink && (
+          <div className="rounded-2xl border border-lavender-soft bg-lavender-mist px-4 py-4">
+            <p className="text-[12.5px] font-medium uppercase tracking-[0.06em] text-lavender-deep">
+              Demo delivery
+            </p>
+            <p className="mt-1.5 text-[13px] leading-relaxed text-plum">
+              No mail provider is configured in this environment, so the link is shown here instead.
+            </p>
+            <Link
+              href={devLink}
+              className="mt-3 inline-flex h-10 items-center rounded-xl bg-white px-4 text-[13.5px] font-medium text-plum shadow-soft hover:brightness-[1.03]"
+            >
+              Open confirmation link
+            </Link>
+          </div>
+        )}
+
+        <Link href="/login" className="block">
+          <Button variant="secondary" size="lg" block>
+            Back to sign in
+          </Button>
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <form onSubmit={onSubmit} className="space-y-4" noValidate>

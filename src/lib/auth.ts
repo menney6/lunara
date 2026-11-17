@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import { cookies, headers } from "next/headers";
 import { cache } from "react";
-import { one, query, run } from "./db";
+import { one, query, run, SQL_NOW } from "./db";
 import { DEFAULT_CYCLE_LENGTH, DEFAULT_PERIOD_LENGTH } from "./cycle";
 import type { SessionUser, UserSettings } from "./types";
 
@@ -52,7 +52,7 @@ export async function createSession(userId: number): Promise<void> {
   const ua = (await headers()).get("user-agent") ?? "";
   const ip = (await headers()).get("x-forwarded-for")?.split(",")[0].trim() ?? "";
 
-  run(
+  await run(
     "INSERT INTO sessions (token_hash, user_id, user_agent, ip, expires_at) VALUES (?,?,?,?,?)",
     sha256(token),
     userId,
@@ -74,7 +74,7 @@ export async function createSession(userId: number): Promise<void> {
 export async function destroySession(): Promise<void> {
   const jar = await cookies();
   const token = jar.get(SESSION_COOKIE)?.value;
-  if (token) run("DELETE FROM sessions WHERE token_hash = ?", sha256(token));
+  if (token) await run("DELETE FROM sessions WHERE token_hash = ?", sha256(token));
   jar.delete(SESSION_COOKIE);
 }
 
@@ -92,11 +92,11 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   const token = jar.get(SESSION_COOKIE)?.value;
   if (!token) return null;
 
-  const row = one<UserRow>(
+  const row = await one<UserRow>(
     `SELECT u.id, u.email, u.name, u.status, u.password_hash, u.created_at
        FROM sessions s
        JOIN users u ON u.id = s.user_id
-      WHERE s.token_hash = ? AND s.expires_at > datetime('now')`,
+      WHERE s.token_hash = ? AND s.expires_at > ${SQL_NOW}`,
     sha256(token),
   );
   if (!row || row.status !== "active") return null;
@@ -130,22 +130,25 @@ const DEFAULT_SETTINGS = {
 };
 
 /** Lazily creates the settings row so every new account has valid defaults. */
-export function ensureSettings(userId: number): UserSettings {
-  const existing = one<UserSettings>("SELECT * FROM settings WHERE user_id = ?", userId);
+export async function ensureSettings(userId: number): Promise<UserSettings> {
+  const existing = await one<UserSettings>("SELECT * FROM settings WHERE user_id = ?", userId);
   if (existing) return existing;
 
-  run(
+  await run(
     `INSERT INTO settings (user_id, display_name, cycle_length, period_length)
-     VALUES (?,?,?,?)`,
+     VALUES (?,?,?,?)
+     ON CONFLICT (user_id) DO NOTHING`,
     userId,
     DEFAULT_SETTINGS.display_name,
     DEFAULT_SETTINGS.cycle_length,
     DEFAULT_SETTINGS.period_length,
   );
-  return one<UserSettings>("SELECT * FROM settings WHERE user_id = ?", userId)!;
+  return (await one<UserSettings>("SELECT * FROM settings WHERE user_id = ?", userId))!;
 }
 
-export const getSettings = cache((userId: number): UserSettings => ensureSettings(userId));
+export const getSettings = cache(
+  async (userId: number): Promise<UserSettings> => ensureSettings(userId),
+);
 
 /** Full onboarding is only complete once a period start date exists. */
 export function hasCycleData(settings: UserSettings): boolean {

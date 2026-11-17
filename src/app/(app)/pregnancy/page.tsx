@@ -20,15 +20,15 @@ export default async function PregnancyPage() {
   const user = await getSessionUser();
   if (!user) redirect("/login");
 
-  const pregnancy = getPregnancy(user.id);
+  const pregnancy = await getPregnancy(user.id);
 
   // No active record → the warm setup panel instead of a dashboard.
   if (!pregnancy) {
-    const settings = getSettings(user.id);
+    const settings = await getSettings(user.id);
     return <PregnancyClient mode="setup" defaultLmp={settings.last_period} />;
   }
 
-  const logs: LogRow[] = recentLogs(user.id, 6).map((row) => ({
+  const logs: LogRow[] = (await recentLogs(user.id, 6)).map((row) => ({
     date: row.date,
     tags: [...parseTags(row.emotional), ...parseTags(row.physical)],
     mood: row.mood_score,

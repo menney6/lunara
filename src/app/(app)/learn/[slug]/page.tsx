@@ -40,11 +40,11 @@ export default async function ArticlePage({
   if (!user) redirect("/login");
 
   const { slug } = await params;
-  const article = getArticle(slug);
+  const article = await getArticle(slug);
   if (!article) notFound();
 
   const category = CATEGORIES.find((c) => c.id === article.category);
-  const related = listArticles(article.category)
+  const related = (await listArticles(article.category))
     .filter((a) => a.slug !== article.slug)
     .slice(0, 2);
 

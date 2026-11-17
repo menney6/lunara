@@ -1,4 +1,4 @@
-import { one, query, run } from "./db";
+import { one, query, run, SQL_NOW } from "./db";
 import { CATEGORIES } from "./content.ts";
 import {
   buildProfile,
@@ -28,11 +28,11 @@ import type {
 
 /* ------------------------------------------------------------- settings */
 
-export function getSettings(userId: number): UserSettings {
+export async function getSettings(userId: number): Promise<UserSettings> {
   return ensureSettings(userId);
 }
 
-export function updateSettings(
+export async function updateSettings(
   userId: number,
   patch: Partial<
     Pick<
@@ -52,13 +52,13 @@ export function updateSettings(
       | "onboarding_complete"
     >
   >,
-): UserSettings {
+): Promise<UserSettings> {
   const keys = Object.keys(patch);
   if (keys.length > 0) {
     const assignments = keys.map((k) => `${k} = ?`).join(", ");
     const values = keys.map((k) => (patch as Record<string, unknown>)[k]);
-    run(
-      `UPDATE settings SET ${assignments}, updated_at = datetime('now') WHERE user_id = ?`,
+    await run(
+      `UPDATE settings SET ${assignments}, updated_at = ${SQL_NOW} WHERE user_id = ?`,
       ...values,
       userId,
     );
@@ -68,14 +68,14 @@ export function updateSettings(
 
 /* -------------------------------------------------------------- periods */
 
-export function listPeriods(userId: number): Period[] {
+export async function listPeriods(userId: number): Promise<Period[]> {
   return query<Period>(
     "SELECT * FROM periods WHERE user_id = ? ORDER BY start_date DESC",
     userId,
   );
 }
 
-export function getPeriod(userId: number, id: number): Period | null {
+export async function getPeriod(userId: number, id: number): Promise<Period | null> {
   return one<Period>("SELECT * FROM periods WHERE id = ? AND user_id = ?", id, userId);
 }
 
@@ -88,9 +88,9 @@ export interface PeriodInput {
 }
 
 /** Idempotent — logging the same start date twice updates the existing row. */
-export function savePeriod(userId: number, input: PeriodInput): Period {
+export async function savePeriod(userId: number, input: PeriodInput): Promise<Period> {
   const end = input.end_date && input.end_date >= input.start_date ? input.end_date : null;
-  run(
+  await run(
     `INSERT INTO periods (user_id, start_date, end_date, flow, symptoms, note)
      VALUES (?,?,?,?,?,?)
      ON CONFLICT(user_id, start_date) DO UPDATE SET
@@ -105,29 +105,43 @@ export function savePeriod(userId: number, input: PeriodInput): Period {
     input.symptoms ?? "",
     input.note ?? "",
   );
-  return one<Period>(
+  return (await one<Period>(
     "SELECT * FROM periods WHERE user_id = ? AND start_date = ?",
     userId,
     input.start_date,
-  )!;
+  ))!;
 }
 
-export function deletePeriod(userId: number, id: number): boolean {
-  return run("DELETE FROM periods WHERE id = ? AND user_id = ?", id, userId).changes > 0;
+export async function deletePeriod(userId: number, id: number): Promise<boolean> {
+  const res = await run(
+    "DELETE FROM periods WHERE id = ? AND user_id = ? RETURNING id",
+    id,
+    userId,
+  );
+  return res.changes > 0;
 }
 
 /** Deletes every log for a given date (used when a period entry is removed). */
-export function deletePeriodByDate(userId: number, start: string): boolean {
-  return run("DELETE FROM periods WHERE user_id = ? AND start_date = ?", userId, start).changes > 0;
+export async function deletePeriodByDate(userId: number, start: string): Promise<boolean> {
+  const res = await run(
+    "DELETE FROM periods WHERE user_id = ? AND start_date = ? RETURNING id",
+    userId,
+    start,
+  );
+  return res.changes > 0;
 }
 
 /* ----------------------------------------------------------- daily logs */
 
-export function getLog(userId: number, date: string): DailyLog | null {
+export async function getLog(userId: number, date: string): Promise<DailyLog | null> {
   return one<DailyLog>("SELECT * FROM daily_logs WHERE user_id = ? AND date = ?", userId, date);
 }
 
-export function listLogs(userId: number, from: string, to: string): DailyLog[] {
+export async function listLogs(
+  userId: number,
+  from: string,
+  to: string,
+): Promise<DailyLog[]> {
   return query<DailyLog>(
     "SELECT * FROM daily_logs WHERE user_id = ? AND date >= ? AND date <= ? ORDER BY date",
     userId,
@@ -137,7 +151,7 @@ export function listLogs(userId: number, from: string, to: string): DailyLog[] {
 }
 
 /** Most recent `limit` logged days, newest first. */
-export function recentLogs(userId: number, limit = 60): DailyLog[] {
+export async function recentLogs(userId: number, limit = 60): Promise<DailyLog[]> {
   return query<DailyLog>(
     "SELECT * FROM daily_logs WHERE user_id = ? ORDER BY date DESC LIMIT ?",
     userId,
@@ -159,8 +173,8 @@ export interface DailyLogInput {
   note?: string;
 }
 
-export function saveDailyLog(userId: number, input: DailyLogInput): DailyLog {
-  run(
+export async function saveDailyLog(userId: number, input: DailyLogInput): Promise<DailyLog> {
+  await run(
     `INSERT INTO daily_logs
        (user_id, date, physical, emotional, discharge, sleep_quality, energy,
         sexual_activity, exercise, water, mood_score, note)
@@ -176,7 +190,7 @@ export function saveDailyLog(userId: number, input: DailyLogInput): DailyLog {
        water = excluded.water,
        mood_score = excluded.mood_score,
        note = excluded.note,
-       updated_at = datetime('now')`,
+       updated_at = ${SQL_NOW}`,
     userId,
     input.date,
     JSON.stringify(input.physical ?? []),
@@ -190,27 +204,32 @@ export function saveDailyLog(userId: number, input: DailyLogInput): DailyLog {
     input.mood_score ?? null,
     input.note ?? "",
   );
-  return getLog(userId, input.date)!;
+  return (await getLog(userId, input.date))!;
 }
 
-export function deleteDailyLog(userId: number, date: string): boolean {
-  return run("DELETE FROM daily_logs WHERE user_id = ? AND date = ?", userId, date).changes > 0;
+export async function deleteDailyLog(userId: number, date: string): Promise<boolean> {
+  const res = await run(
+    "DELETE FROM daily_logs WHERE user_id = ? AND date = ? RETURNING id",
+    userId,
+    date,
+  );
+  return res.changes > 0;
 }
 
 /* ------------------------------------------------------------ pregnancy */
 
-export function getPregnancy(userId: number): PregnancyRecord | null {
+export async function getPregnancy(userId: number): Promise<PregnancyRecord | null> {
   return one<PregnancyRecord>(
     "SELECT * FROM pregnancy WHERE user_id = ? AND status = 'active'",
     userId,
   );
 }
 
-export function savePregnancy(
+export async function savePregnancy(
   userId: number,
   input: { start_date: string; due_date: string; confirmed_due_date?: string | null },
-): PregnancyRecord {
-  run(
+): Promise<PregnancyRecord> {
+  await run(
     `INSERT INTO pregnancy (user_id, start_date, due_date, confirmed_due_date, status)
      VALUES (?,?,?,?, 'active')
      ON CONFLICT(user_id) DO UPDATE SET
@@ -223,14 +242,15 @@ export function savePregnancy(
     input.due_date,
     input.confirmed_due_date ?? null,
   );
-  return getPregnancy(userId)!;
+  return (await getPregnancy(userId))!;
 }
 
-export function endPregnancy(userId: number): boolean {
-  return (
-    run("UPDATE pregnancy SET status = 'ended' WHERE user_id = ? AND status = 'active'", userId)
-      .changes > 0
+export async function endPregnancy(userId: number): Promise<boolean> {
+  const res = await run(
+    "UPDATE pregnancy SET status = 'ended' WHERE user_id = ? AND status = 'active' RETURNING id",
+    userId,
   );
+  return res.changes > 0;
 }
 
 /* ----------------------------------------------------- notification prefs */
@@ -244,8 +264,8 @@ export const ALL_NOTIFICATIONS: { kind: NotificationKind; label: string; blurb: 
   { kind: "weekly_insight", label: "Weekly insight", blurb: "A short summary of your patterns each week." },
 ];
 
-export function getNotificationPrefs(userId: number): NotificationPref[] {
-  const existing = query<NotificationPref>(
+export async function getNotificationPrefs(userId: number): Promise<NotificationPref[]> {
+  const existing = await query<NotificationPref>(
     "SELECT * FROM notification_prefs WHERE user_id = ?",
     userId,
   );
@@ -253,7 +273,7 @@ export function getNotificationPrefs(userId: number): NotificationPref[] {
 
   // Fill in any missing kinds with sensible defaults (on, 09:00).
   for (const { kind } of ALL_NOTIFICATIONS) {
-    run(
+    await run(
       `INSERT INTO notification_prefs (user_id, kind, enabled, hour)
        VALUES (?,?,1,9)
        ON CONFLICT(user_id, kind) DO NOTHING`,
@@ -267,15 +287,15 @@ export function getNotificationPrefs(userId: number): NotificationPref[] {
   );
 }
 
-export function setNotificationPref(
+export async function setNotificationPref(
   userId: number,
   kind: NotificationKind,
   patch: { enabled?: number; hour?: number },
-): void {
-  const prefs = getNotificationPrefs(userId);
+): Promise<void> {
+  const prefs = await getNotificationPrefs(userId);
   const current = prefs.find((p) => p.kind === kind);
   if (!current) return;
-  run(
+  await run(
     "UPDATE notification_prefs SET enabled = ?, hour = ? WHERE user_id = ? AND kind = ?",
     patch.enabled ?? current.enabled,
     patch.hour ?? current.hour,
@@ -290,9 +310,9 @@ export function setNotificationPref(
  * Merges onboarding settings with recorded period history into the projection
  * input the cycle engine expects.
  */
-export function getCycleProfile(userId: number): CycleProfile {
-  const settings = getSettings(userId);
-  const periods = listPeriods(userId);
+export async function getCycleProfile(userId: number): Promise<CycleProfile> {
+  const settings = await getSettings(userId);
+  const periods = await listPeriods(userId);
 
   return buildProfile({
     lastPeriod: settings.last_period,
@@ -304,20 +324,23 @@ export function getCycleProfile(userId: number): CycleProfile {
   });
 }
 
-export function getCycleStateFor(userId: number, today = new Date()): CycleState | null {
-  return getCycleState(getCycleProfile(userId), today);
+export async function getCycleStateFor(
+  userId: number,
+  today = new Date(),
+): Promise<CycleState | null> {
+  return getCycleState(await getCycleProfile(userId), today);
 }
 
 /**
  * Keeps `settings.last_period` pointing at the most recent recorded period so
  * the dashboard stays correct after a new period is logged.
  */
-export function syncAnchorFromHistory(userId: number): void {
-  const latest = one<{ start_date: string }>(
+export async function syncAnchorFromHistory(userId: number): Promise<void> {
+  const latest = await one<{ start_date: string }>(
     "SELECT start_date FROM periods WHERE user_id = ? ORDER BY start_date DESC LIMIT 1",
     userId,
   );
-  if (latest) updateSettings(userId, { last_period: latest.start_date });
+  if (latest) await updateSettings(userId, { last_period: latest.start_date });
 }
 
 /* -------------------------------------------------------------- articles */
@@ -335,13 +358,13 @@ function hydrateArticle(row: Record<string, unknown>): Article {
   };
 }
 
-export function listArticles(category?: ArticleCategory): Article[] {
+export async function listArticles(category?: ArticleCategory): Promise<Article[]> {
   const rows = category
-    ? query<Record<string, unknown>>(
+    ? await query<Record<string, unknown>>(
         "SELECT * FROM articles WHERE category = ? ORDER BY reading_minutes",
         category,
       )
-    : query<Record<string, unknown>>("SELECT * FROM articles ORDER BY reading_minutes");
+    : await query<Record<string, unknown>>("SELECT * FROM articles ORDER BY reading_minutes");
 
   // Sort by the editorial topic order in content.ts (not alphabetically), so
   // the flagship "Menstrual health" reads first rather than "Endometriosis".
@@ -355,11 +378,12 @@ export function listArticles(category?: ArticleCategory): Article[] {
     );
 }
 
-export function getArticle(slug: string): Article | null {
-  const row = one<Record<string, unknown>>("SELECT * FROM articles WHERE slug = ?", slug);
+export async function getArticle(slug: string): Promise<Article | null> {
+  const row = await one<Record<string, unknown>>("SELECT * FROM articles WHERE slug = ?", slug);
   return row ? hydrateArticle(row) : null;
 }
 
-export function countArticles(): number {
-  return Number(one<{ n: number }>("SELECT COUNT(*) AS n FROM articles")?.n ?? 0);
+export async function countArticles(): Promise<number> {
+  const row = await one<{ n: string | number }>("SELECT COUNT(*) AS n FROM articles");
+  return Number(row?.n ?? 0);
 }

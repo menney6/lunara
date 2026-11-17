@@ -61,6 +61,6 @@ export async function POST(req: Request) {
     );
   }
 
-  setNotificationPref(user.id, kind as NotificationKind, { enabled, hour });
+  await setNotificationPref(user.id, kind as NotificationKind, { enabled, hour });
   return NextResponse.json({ ok: true });
 }

@@ -79,7 +79,7 @@ export async function PATCH(req: Request) {
   }
 
   // Cross-field cycle validation runs once both numbers are resolved.
-  const current = getSettings(user.id);
+  const current = await getSettings(user.id);
   const cycleCheck = validateCycle({
     cycle_length: Number(patch.cycle_length ?? current.cycle_length),
     period_length: Number(patch.period_length ?? current.period_length),
@@ -92,6 +92,6 @@ export async function PATCH(req: Request) {
     );
   }
 
-  const settings = updateSettings(user.id, patch);
+  const settings = await updateSettings(user.id, patch);
   return NextResponse.json({ ok: true, settings });
 }

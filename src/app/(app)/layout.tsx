@@ -11,7 +11,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const user = await getSessionUser();
   if (!user) redirect("/login");
 
-  const settings = getSettings(user.id);
+  const settings = await getSettings(user.id);
   if (!settings.onboarding_complete) redirect("/onboarding");
 
   return (

@@ -3,10 +3,10 @@
  * dashboard, calendar, insights and charts all have realistic data to show.
  *
  * Idempotent — re-running rebuilds the demo account's records from scratch.
- * Usage: npm run db:seed
+ * Usage: npm run db:seed   (loads SUPABASE_DB_URL from .env.local)
  */
 import crypto from "node:crypto";
-import { getDb, one, run } from "../src/lib/db.ts";
+import { closeDb, one, run } from "../src/lib/db.ts";
 import { dueDateFromStart, toISO, addDays, parseISO } from "../src/lib/cycle.ts";
 
 /** Mirrors src/lib/auth.ts so the seed never loads Next-only modules. */
@@ -25,19 +25,17 @@ const PASSWORD = "lunara1234";
 const CYCLE = 29;
 const PERIOD = 5;
 
-getDb();
-
 /* ------------------------------------------------------------- demo user */
 
-const existing = one<{ id: number }>("SELECT id FROM users WHERE email = ?", EMAIL);
+const existing = await one<{ id: number }>("SELECT id FROM users WHERE email = ?", EMAIL);
 
 if (existing) {
   // Cascade clears settings/periods/logs/pregnancy/notifications.
-  run("DELETE FROM users WHERE id = ?", existing.id);
+  await run("DELETE FROM users WHERE id = ?", existing.id);
 }
 
-const inserted = run(
-  "INSERT INTO users (email, password_hash, name, status) VALUES (?,?,'Amara','active')",
+const inserted = await run(
+  "INSERT INTO users (email, password_hash, name, status) VALUES (?,?,'Amara','active') RETURNING id",
   EMAIL,
   hashPassword(PASSWORD),
 );
@@ -47,7 +45,7 @@ const userId = Number(inserted.lastInsertRowid);
 
 // Anchor the cycle 9 days ago so the demo lands mid-cycle on day 10,
 // with the fertile window just opening — the most interesting state to show.
-run(
+await run(
   `INSERT INTO settings
      (user_id, display_name, dob, last_period, cycle_length, period_length,
       regularity, pregnancy_status, goal, notifications_enabled, privacy_lock,
@@ -71,9 +69,10 @@ const flow = ["medium", "heavy", "medium", "light", "medium", "medium"];
 let cursor = 9;
 for (let i = 0; i < cycleLengths.length; i++) {
   const start = iso(cursor);
-  run(
-    `INSERT OR IGNORE INTO periods (user_id, start_date, end_date, flow, symptoms, note)
-     VALUES (?,?,?,?,?,?)`,
+  await run(
+    `INSERT INTO periods (user_id, start_date, end_date, flow, symptoms, note)
+     VALUES (?,?,?,?,?,?)
+     ON CONFLICT (user_id, start_date) DO NOTHING`,
     userId,
     start,
     toISO(addDays(parseISO(start), PERIOD - 1)),
@@ -123,11 +122,12 @@ for (let d = 27; d >= 0; d--) {
   const mood =
     cycleDay >= 20 && cycleDay <= 26 ? 2 + (dayIndex % 2) : cycleDay <= 3 ? 3 : 4 + (dayIndex % 2);
 
-  run(
-    `INSERT OR IGNORE INTO daily_logs
+  await run(
+    `INSERT INTO daily_logs
        (user_id, date, physical, emotional, discharge, sleep_quality, energy,
         sexual_activity, exercise, water, mood_score, note)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+     ON CONFLICT (user_id, date) DO NOTHING`,
     userId,
     iso(d),
     JSON.stringify([...new Set(physical)]),
@@ -150,7 +150,7 @@ const kinds = [
   "daily_checkin", "pregnancy_update", "weekly_insight",
 ];
 for (const kind of kinds) {
-  run(
+  await run(
     `INSERT INTO notification_prefs (user_id, kind, enabled, hour)
      VALUES (?,?,?,9)
      ON CONFLICT(user_id, kind) DO NOTHING`,
@@ -160,9 +160,9 @@ for (const kind of kinds) {
   );
 }
 
-const periods = Number(one<{ n: number }>("SELECT COUNT(*) AS n FROM periods WHERE user_id = ?", userId)?.n ?? 0);
-const logs = Number(one<{ n: number }>("SELECT COUNT(*) AS n FROM daily_logs WHERE user_id = ?", userId)?.n ?? 0);
-const articles = Number(one<{ n: number }>("SELECT COUNT(*) AS n FROM articles")?.n ?? 0);
+const periods = Number((await one<{ n: number }>("SELECT COUNT(*) AS n FROM periods WHERE user_id = ?", userId))?.n ?? 0);
+const logs = Number((await one<{ n: number }>("SELECT COUNT(*) AS n FROM daily_logs WHERE user_id = ?", userId))?.n ?? 0);
+const articles = Number((await one<{ n: number }>("SELECT COUNT(*) AS n FROM articles"))?.n ?? 0);
 
 console.log("");
 console.log("  Lunara database seeded");
@@ -174,3 +174,6 @@ console.log(`  Articles     : ${articles}`);
 console.log("");
 console.log("  Due date helper verified: " + dueDateFromStart(iso(9)));
 console.log("");
+
+// Release the pool so the script can exit.
+await closeDb();

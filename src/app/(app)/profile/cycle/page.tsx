@@ -12,7 +12,7 @@ export default async function CycleSettingsPage() {
 
   // SQLite rows have a null prototype — spread into a plain object before it
   // crosses the server → client boundary.
-  const settings = { ...getSettings(user.id) };
+  const settings = { ...(await getSettings(user.id)) };
 
   return (
     <div className="space-y-5">

@@ -98,7 +98,7 @@ export async function POST(req: Request) {
 
   if (Object.keys(errors).length > 0) return badRequest(errors);
 
-  const pregnancy = savePregnancy(user.id, {
+  const pregnancy = await savePregnancy(user.id, {
     start_date: start,
     due_date: due,
     confirmed_due_date: confirmed,
@@ -112,7 +112,7 @@ export async function DELETE() {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "Not signed in." }, { status: 401 });
 
-  const ended = endPregnancy(user.id);
+  const ended = await endPregnancy(user.id);
   if (!ended) {
     return NextResponse.json({ error: "No active pregnancy to end." }, { status: 404 });
   }
