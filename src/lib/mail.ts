@@ -12,11 +12,11 @@ import { run } from "./db";
  *   SMTP_USER=you@gmail.com      SMTP_PASS=<gmail app password>
  *   MAIL_FROM="Lunara <you@gmail.com>"
  *
- * When those are absent (local dev, or Render before the secrets are set)
+ * When those are absent (local dev, or Vercel before the secrets are set)
  * the module runs in *demo mode*: nothing is sent, the message is logged and
  * flows that return a link hand it back to the caller so the UI can show a
  * "demo delivery" panel — the same pattern the password-reset flow already
- * used. Adding the secrets to Render turns everything on with no code change.
+ * used. Adding the secrets to Vercel turns everything on with no code change.
  */
 
 /** True when real email delivery is configured. */

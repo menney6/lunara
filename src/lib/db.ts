@@ -168,7 +168,7 @@ function getClient(): postgres.Sql {
     throw new Error(
       "SUPABASE_DB_URL is not set. Add the Supabase Session pooler connection string " +
         "(Dashboard → Connect → Connection string → Session pooler) to .env.local " +
-        "locally and to the Render environment in production.",
+        "and to the SUPABASE_DB_URL variable in Vercel in production.",
     );
   }
   _sql = postgres(url, {

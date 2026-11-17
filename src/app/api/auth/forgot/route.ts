@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
  *
  * Always responds 200 so the form can never be used to discover which
  * addresses are registered. When SMTP is configured the reset link is emailed;
- * otherwise (local dev, or Render before the secrets are set) the link is
+ * otherwise (local dev, or Vercel before the secrets are set) the link is
  * returned to the caller and rendered as a "demo delivery" — keeping the flow
  * usable end to end.
  */
